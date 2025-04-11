@@ -1,0 +1,6 @@
+name: qe_tutorial
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - qe=7.4
