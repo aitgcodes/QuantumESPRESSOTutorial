@@ -20,7 +20,39 @@ QE_BUILD_DIR="${BASE_DIR}/qe_build"
 QE_INSTALL_DIR="${BASE_DIR}/quantum-espresso-7.3.1"
 
 # Create necessary directories
-mkdir -p "${BASE_DIR}" "${QE_BUILD_DIR}" "${QE_INSTALL_DIR}"
+mkdir -p "${BASE_DIR}" "${QE_BUILD_DIR}" "${QE_INSTALL_DIR}" "${LOCAL_MICROMAMBA_DIR}"
+
+# Detect OS and architecture
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
+# Choose the correct micromamba download URL
+MAMBA_URL=""
+if [ "$OS" = "linux" ]; then
+  if [ "$ARCH" = "x86_64" ]; then
+    MAMBA_URL="https://micro.mamba.pm/api/micromamba/linux-64/latest"
+  elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    # Linux ARM/Apple Silicon under Linux
+    MAMBA_URL="https://micro.mamba.pm/api/micromamba/linux-aarch64/latest"
+  else
+    echo "Unsupported Linux architecture: $ARCH"
+    exit 1
+  fi
+elif [ "$OS" = "darwin" ]; then
+  if [ "$ARCH" = "x86_64" ]; then
+    # Intel Mac
+    MAMBA_URL="https://micro.mamba.pm/api/micromamba/osx-64/latest"
+  elif [ "$ARCH" = "arm64" ]; then
+    # Apple Silicon (M1/M2)
+    MAMBA_URL="https://micro.mamba.pm/api/micromamba/osx-arm64/latest"
+  else
+    echo "Unsupported macOS architecture: $ARCH"
+    exit 1
+  fi
+else
+  echo "Unsupported operating system: $OS"
+  exit 1
+fi
 
 # Check if micromamba is installed system-wide
 if command -v micromamba >/dev/null 2>&1; then
@@ -28,9 +60,11 @@ if command -v micromamba >/dev/null 2>&1; then
     MICROMAMBA_EXE=$(command -v micromamba)
 else
     echo "System micromamba not found. Installing micromamba locally..."
-    mkdir -p "${LOCAL_MICROMAMBA_DIR}"
     cd "${LOCAL_MICROMAMBA_DIR}"
-    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+
+    # Download and extract micromamba for the detected platform
+    curl -Ls "${MAMBA_URL}" | tar -xvj bin/micromamba
+
     MICROMAMBA_EXE="${LOCAL_MICROMAMBA_DIR}/bin/micromamba"
     ${MICROMAMBA_EXE} shell init -s bash -r "${LOCAL_MICROMAMBA_DIR}"
     # For a local install, set the root prefix to the local directory.
