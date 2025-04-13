@@ -133,6 +133,7 @@ fi
 micromamba activate ${QE_ENV_NAME}
 
 # Add QE binaries to PATH and set library path
+MAMBA_ENV_PREFIX=$(micromamba info -n ${QE_ENV_NAME} | grep "env location" | awk -F': ' '{print $2}')
 export PATH="${QE_INSTALL_DIR}/bin:\$PATH"
 export LD_LIBRARY_PATH="\${MAMBA_ENV_PREFIX}/lib:\$LD_LIBRARY_PATH"
 
