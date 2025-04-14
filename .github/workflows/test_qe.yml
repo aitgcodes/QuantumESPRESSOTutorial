@@ -1,0 +1,31 @@
+name: Test QE 7.3.1 Setup
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-qe:
+    name: Build & Test QE on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Make setup script executable
+        run: chmod +x ./setup_qe.sh
+
+      - name: Run QE setup script
+        run: ./setup_qe.sh
+
+      - name: Test QE installation
+        shell: bash
+        run: |
+          source "${HOME}/qe_setup/activate_qe.sh"
+          pw.x -h
