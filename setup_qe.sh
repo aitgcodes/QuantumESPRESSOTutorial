@@ -101,20 +101,38 @@ cd build
 
 # Configure with CMake
 echo "Configuring Quantum ESPRESSO with CMake..."
-cmake .. \
-    -DCMAKE_INSTALL_PREFIX="${QE_INSTALL_DIR}" \
-    -DCMAKE_PREFIX_PATH="${MAMBA_ENV_PREFIX}" \
-    -DCMAKE_C_COMPILER=mpicc \
-    -DCMAKE_Fortran_COMPILER=mpif90 \
-    -DQE_ENABLE_MPI=ON \
-    -DQE_ENABLE_OPENMP=ON \
-    -DQE_ENABLE_SCALAPACK=ON \
-    -DQE_ENABLE_HDF5=ON \
-    -DQE_ENABLE_LIBXC=OFF
+# Base CMake configuration
+CMAKE_OPTS="
+  -DCMAKE_INSTALL_PREFIX=${QE_INSTALL_DIR}
+  -DCMAKE_PREFIX_PATH=${MAMBA_ENV_PREFIX}
+  -DCMAKE_C_COMPILER=mpicc
+  -DCMAKE_Fortran_COMPILER=mpif90
+  -DQE_ENABLE_MPI=ON
+  -DQE_ENABLE_OPENMP=ON
+  -DQE_ENABLE_SCALAPACK=ON
+  -DQE_ENABLE_HDF5=ON
+  -DQE_ENABLE_LIBXC=OFF
+"
+
+# On macOS ARM, disable offloading
+if [[ "$ARCH" == "arm64" ]]; then
+  echo "Detected Apple Silicon – disabling QE offload support."
+  CMAKE_OPTS+=" -DQE_ENABLE_OFFLOAD=OFF"
+fi
+
+cmake .. $CMAKE_OPTS
 
 # Build and install
 echo "Building Quantum ESPRESSO (this may take a while)..."
-make -j$(nproc)
+
+# Detect number of build threads
+if command -v nproc &> /dev/null; then
+  CORES=$(nproc)
+else
+  CORES=$(sysctl -n hw.logicalcpu)
+fi
+
+make -j"${CORES}"
 make install
 
 # Create an activation script for the QE environment
