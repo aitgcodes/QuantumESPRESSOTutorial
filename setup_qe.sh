@@ -75,12 +75,34 @@ fi
 eval "$(${MICROMAMBA_EXE} shell hook -s bash)"
 
 # Create a QE environment with all required dependencies
-echo "Creating Quantum ESPRESSO environment with dependencies..."
-micromamba create -n ${QE_ENV_NAME} -c conda-forge -y \
+if [[ "$OS" == "darwin" ]]; then
+  echo "Setting up QE environment for macOS..."
+
+  # Use gfortran_osx-64 or system gfortran
+  if [[ "$ARCH" == "x86_64" ]]; then
+    # Intel macOS
+    micromamba create -n ${QE_ENV_NAME} -c conda-forge -y \
+      gfortran_osx-64 cmake=3.31.6 ninja openmpi mpi4py \
+      fftw libxc scalapack hdf5 zlib blas lapack openblas \
+      wget git python
+  elif [[ "$ARCH" == "arm64" ]]; then
+    # Apple Silicon – safer to use system gfortran (e.g. via Homebrew)
+    micromamba create -n ${QE_ENV_NAME} -c conda-forge -y \
+      cmake=3.31.6 ninja openmpi mpi4py \
+      fftw libxc scalapack hdf5 zlib blas lapack openblas \
+      wget git python
+  fi
+
+else
+  echo "Setting up QE environment for Linux..."
+
+  # On Linux, use conda-forge compilers
+  micromamba create -n ${QE_ENV_NAME} -c conda-forge -y \
     gfortran compilers cmake=3.31.6 ninja \
     openmpi mpi4py \
     fftw libxc scalapack hdf5 zlib blas lapack openblas \
     wget git python
+fi
 
 # Activate the QE environment
 micromamba activate ${QE_ENV_NAME}
@@ -113,12 +135,6 @@ CMAKE_OPTS="
   -DQE_ENABLE_HDF5=ON
   -DQE_ENABLE_LIBXC=OFF
 "
-
-# On macOS ARM, disable offloading
-if [[ "$ARCH" == "arm64" ]]; then
-  echo "Detected Apple Silicon – disabling QE offload support."
-  CMAKE_OPTS+=" -DQE_ENABLE_OFFLOAD=OFF"
-fi
 
 cmake .. $CMAKE_OPTS
 
